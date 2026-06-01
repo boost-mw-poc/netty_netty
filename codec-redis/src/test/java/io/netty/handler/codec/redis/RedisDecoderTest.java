@@ -57,7 +57,7 @@ public class RedisDecoderTest {
         return new EmbeddedChannel(
                 new RedisDecoder(decodeInlineCommands),
                 new RedisBulkStringAggregator(),
-                new RedisArrayAggregator(100));
+                new RedisArrayAggregator(100, 1024));
     }
 
     @AfterEach
