@@ -19,6 +19,7 @@ package io.netty.handler.codec.redis;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.handler.codec.CodecException;
 import io.netty.handler.codec.DecoderException;
 import io.netty.util.IllegalReferenceCountException;
 import io.netty.util.ReferenceCountUtil;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.function.Executable;
 import java.util.List;
 
 import static io.netty.handler.codec.redis.RedisCodecTestUtil.*;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -55,7 +57,7 @@ public class RedisDecoderTest {
         return new EmbeddedChannel(
                 new RedisDecoder(decodeInlineCommands),
                 new RedisBulkStringAggregator(),
-                new RedisArrayAggregator());
+                new RedisArrayAggregator(100));
     }
 
     @AfterEach
@@ -273,6 +275,16 @@ public class RedisDecoderTest {
         assertEquals("Bar", ((ErrorRedisMessage) strArray.children().get(1)).content());
 
         ReferenceCountUtil.release(msg);
+    }
+
+    @Test
+    public void shouldErrorOnTooLargeArray() {
+        // We defined the max aggregate array size to be 100
+        assertThatThrownBy(() -> channel.writeInbound(byteBufOf("*101\r\n")))
+                .isInstanceOf(DecoderException.class)
+                .rootCause()
+                .isInstanceOf(CodecException.class)
+                .hasMessageContaining("100");
     }
 
     @Test
